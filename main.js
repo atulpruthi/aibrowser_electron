@@ -15,7 +15,8 @@ function createWindow() {
       preload: __dirname + '/preload.js',
       webviewTag: true,
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      webSecurity: false // Allow loading local ES modules
     }
   });
   mainWindow.loadFile('renderer/index.html');
