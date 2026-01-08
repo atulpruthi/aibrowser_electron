@@ -3,11 +3,8 @@ let pipeline = null;
 let env = null;
 
 // AI Model state
-let aiIntentClassifier = null;
-let aiNERModel = null;
 let aiModelLoading = false;
 let aiModelReady = false;
-let nerModelReady = false;
 
 // Tab management state
 let tabs = [];
@@ -31,13 +28,24 @@ function initializeTransformers() {
 
 // Initialize app when DOM is ready
 function initializeApp() {
-  console.log('Initializing AI Browser...');
+  console.log('=== Initializing AI Browser ===');
+  console.log('window.transformers:', !!window.transformers);
+  console.log('window.aiModelManagerModule:', !!window.aiModelManagerModule);
+  console.log('window.functionRegistryModule:', !!window.functionRegistryModule);
   
   // Initialize transformers
   initializeTransformers();
 
 // Initialize app UI
-document.getElementById('app').innerHTML = `
+const appDiv = document.getElementById('app');
+if (!appDiv) {
+  console.error('FATAL: #app div not found!');
+  document.body.innerHTML = '<h1 style="color: red; padding: 20px;">Error: App container not found!</h1>';
+  return;
+}
+console.log('App div found, rendering UI...');
+
+appDiv.innerHTML = `
   <div class="home-page" id="home-page">
     <div class="home-content">
       <div class="home-header">
@@ -95,6 +103,12 @@ document.getElementById('app').innerHTML = `
       <div class="loading-spinner" id="loading-spinner"></div>
       <input id="url" type="text" placeholder="Search or enter address" />
     </div>
+    <button class="nav-btn" id="view-source-btn" title="View Page Source (HTML)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M5 3l-4 5 4 5V3zM11 3v10l4-5-4-5z"/>
+        <path d="M6 7h4v2H6z"/>
+      </svg>
+    </button>
     <button class="menu-btn" id="menu-btn" title="Menu">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
         <circle cx="8" cy="3" r="1.5"/>
@@ -125,7 +139,7 @@ document.getElementById('app').innerHTML = `
               </svg>
             </div>
             <p>Welcome! I'm your AI assistant.</p>
-            <p>How can I help you today?</p>
+            <p>I can help you navigate, search, and control your browser.</p>
           </div>
         </div>
         <div class="chat-input-container">
@@ -148,6 +162,7 @@ const backBtn = document.getElementById('back-btn');
 const forwardBtn = document.getElementById('forward-btn');
 const refreshBtn = document.getElementById('refresh-btn');
 const homeBtn = document.getElementById('home-btn');
+const viewSourceBtn = document.getElementById('view-source-btn');
 const urlInput = document.getElementById('url');
 const securityBadge = document.getElementById('security-badge');
 const loadingSpinner = document.getElementById('loading-spinner');
@@ -165,45 +180,27 @@ const aiStatusEl = document.getElementById('ai-status');
 // ========== AI MODEL LOADING ==========
 // Load AI intent classification model
 async function loadAIModel() {
-  if (aiIntentClassifier || aiModelLoading) return;
-  
-  // Wait for transformers library to load
-  if (!pipeline || typeof pipeline !== 'function') {
-    console.log('Waiting for Transformers.js to load...');
-    setTimeout(() => loadAIModel(), 1000);
-    return;
-  }
+  if (aiModelReady || aiModelLoading) return;
   
   try {
     aiModelLoading = true;
     updateAIStatus('loading');
     console.log('Loading AI intent classification model...');
     
-    // Load zero-shot classification model for flexible intent detection
-    aiIntentClassifier = await pipeline(
-      'zero-shot-classification',
-      'Xenova/distilbert-base-uncased-mnli',
-      {
-        progress_callback: (progress) => {
-          console.log('Loading progress:', progress);
-        }
-      }
-    );
+    // Check if aiModelManager is available
+    if (!window.aiModelManagerModule) {
+      console.error('AI Model Manager not available');
+      updateAIStatus('error');
+      addAssistantMessage('AI model not available. Please refresh the browser.', 'error');
+      return;
+    }
+    
+    // Preload the intent classifier
+    await window.aiModelManagerModule.loadIntentClassifier();
     
     aiModelReady = true;
     updateAIStatus('ready');
     console.log('AI intent classifier loaded successfully!');
-    
-    // Load NER model for parameter extraction
-    console.log('Loading NER model for parameter extraction...');
-    try {
-      aiNERModel = await pipeline('fill-mask', 'Xenova/bert-base-uncased');
-      nerModelReady = true;
-      console.log('NER model loaded successfully!');
-    } catch (nerError) {
-      console.warn('NER model failed to load, will use fallback extraction:', nerError);
-      nerModelReady = false;
-    }
     
     // Show success message in chat
     addAssistantMessage('AI models ready! I understand natural language commands.', 'success');
@@ -238,186 +235,40 @@ function updateAIStatus(status) {
 
 // Classify intent using AI
 async function classifyIntentWithAI(text) {
-  if (!aiModelReady || !aiIntentClassifier) {
+  if (!window.aiModelManagerModule) {
+    console.error('AI Model Manager not loaded');
     return null;
   }
   
-  const candidateLabels = [
-    'visiting or opening a website address like github.com google.com reddit.com',
-    'searching for information questions or facts on the internet',
-    'asking a general knowledge question',
-    'extracting or collecting all hyperlinks URLs and anchor tags from the page',
-    'reading the text content of the current webpage',
-    'getting metadata or information about the current page',
-    'scrolling the page up or down',
-    'going back to previous page in history',
-    'going forward to next page in history',
-    'reloading or refreshing the current page',
-    'creating or opening a new empty tab in the browser',
-    'closing or removing the current tab in the browser',
-    'finding specific text on the current page'
-  ];
-  
   try {
-    const result = await aiIntentClassifier(text, candidateLabels, {
-      multi_label: false
-    });
+    // Use the trained intent classification model
+    const intents = await window.aiModelManagerModule.classifyIntent(text);
     
-    console.log('AI Intent:', result.labels[0], 'Confidence:', result.scores[0]);
-    console.log('Top 3 intents:', result.labels.slice(0, 3).map((label, i) => `${label} (${result.scores[i].toFixed(2)})`).join(', '));
-    
-    // Map intents to actions
-    let intent = result.labels[0];
-    if (intent === 'visiting or opening a website address like github.com google.com reddit.com') {
-      intent = 'navigate to URL';
-    } else if (intent === 'searching for information questions or facts on the internet' || intent === 'asking a general knowledge question') {
-      intent = 'search the web';
-    } else if (intent === 'extracting or collecting all hyperlinks URLs and anchor tags from the page') {
-      intent = 'extract links';
-    } else if (intent === 'reading the text content of the current webpage') {
-      intent = 'extract page content';
-    } else if (intent === 'getting metadata or information about the current page') {
-      intent = 'get page information';
-    } else if (intent === 'scrolling the page up or down') {
-      intent = 'scroll page';
-    } else if (intent === 'going back to previous page in history') {
-      intent = 'go back';
-    } else if (intent === 'going forward to next page in history') {
-      intent = 'go forward';
-    } else if (intent === 'reloading or refreshing the current page') {
-      intent = 'reload page';
-    } else if (intent === 'creating or opening a new empty tab in the browser') {
-      intent = 'open new tab';
-    } else if (intent === 'closing or removing the current tab in the browser') {
-      intent = 'close tab';
-    } else if (intent === 'finding specific text on the current page') {
-      intent = 'find text in page';
+    if (!intents || intents.length === 0) {
+      return null;
     }
     
-    return {
-      intent: intent,
-      confidence: result.scores[0]
-    };
+    const topIntent = intents[0];
+    console.log('AI Intent:', topIntent.intent, 'Confidence:', topIntent.confidence);
+    console.log('Top 3 intents:', intents.map(i => `${i.intent} (${i.confidence.toFixed(2)})`).join(', '));
+    
+    return topIntent;
   } catch (error) {
     console.error('AI classification failed:', error);
     return null;
   }
 }
 
-// Smart domain detection without hardcoded keywords
-function looksLikeDomain(text) {
-  const cleaned = text.trim().toLowerCase();
-  
-  // Pattern 1: Contains TLD (.com, .org, .net, etc.)
-  if (/\.(com|org|net|edu|gov|io|co|dev|app|ai|tech|info|biz)/i.test(cleaned)) {
-    return true;
-  }
-  
-  // Pattern 2: Single short word (likely a domain name)
-  const words = cleaned.split(/\s+/);
-  if (words.length === 1 && words[0].length > 2 && words[0].length < 20) {
-    // Check if it's a proper noun pattern (capitalized or well-known pattern)
-    return true;
-  }
-  
-  // Pattern 3: Two words with no question words
-  if (words.length === 2) {
-    const questionWords = ['what', 'how', 'where', 'when', 'why', 'who', 'is', 'are', 'can', 'do', 'does'];
-    if (!questionWords.some(q => words.includes(q))) {
-      return true;
-    }
-  }
-  
-  return false;
-}
-
-// Enhanced classification with domain context awareness
+// Use custom trained model via IPC
 async function classifyWithContext(text) {
-  // Get base AI classification
+  const lowerText = text.toLowerCase().trim();
+  
+  // Get AI classification from custom model
   const aiResult = await classifyIntentWithAI(text);
+  
   if (!aiResult) return null;
   
-  const lowerText = text.toLowerCase();
-  
-  // Explicit tab management detection
-  if (lowerText.match(/^(open|create|new|add)\s+(new\s+)?(tab|window)/i)) {
-    console.log('Explicit "new tab" command detected');
-    return {
-      intent: 'open new tab',
-      confidence: 0.95
-    };
-  }
-  
-  if (lowerText.match(/^(close|remove|delete|exit)\s+(tab|window|this tab|current tab)/i)) {
-    console.log('Explicit "close tab" command detected');
-    return {
-      intent: 'close tab',
-      confidence: 0.95
-    };
-  }
-  
-  // Explicit navigation commands
-  if (lowerText.match(/^(go\s+)?back$/i) || lowerText.match(/^(navigate|go)\s+back$/i)) {
-    console.log('Explicit "go back" command detected');
-    return {
-      intent: 'go back',
-      confidence: 0.95
-    };
-  }
-  
-  if (lowerText.match(/^(go\s+)?forward$/i) || lowerText.match(/^(navigate|go)\s+forward$/i)) {
-    console.log('Explicit "go forward" command detected');
-    return {
-      intent: 'go forward',
-      confidence: 0.95
-    };
-  }
-  
-  if (lowerText.match(/^(refresh|reload)(\s+page)?$/i)) {
-    console.log('Explicit "reload page" command detected');
-    return {
-      intent: 'reload page',
-      confidence: 0.95
-    };
-  }
-  
-  if (lowerText.match(/^home$/i) || lowerText.match(/^go\s+home$/i) || lowerText.match(/^(go\s+to\s+)?home\s+page$/i)) {
-    console.log('Explicit "home" command detected');
-    return {
-      intent: 'go home',
-      confidence: 0.95
-    };
-  }
-  
-  // Extract the potential target (remove command words)
-  const commandWords = ['navigate', 'to', 'open', 'visit', 'go', 'show', 'load', 'search', 'for', 'find'];
-  const words = text.toLowerCase().split(/\s+/);
-  const contentWords = words.filter(w => !commandWords.includes(w));
-  const potentialTarget = contentWords.join(' ');
-  
-  // Check if target looks like a domain
-  const isDomain = looksLikeDomain(potentialTarget);
-  
-  console.log('Domain detection:', potentialTarget, '→', isDomain ? 'YES (domain-like)' : 'NO (query-like)');
-  
-  // If it looks like a domain and AI confidence for navigation is reasonable, boost it
-  if (isDomain) {
-    // If navigate intent is in top 2, choose it
-    const navigateIntent = 'navigate to URL';
-    if (aiResult.intent === navigateIntent) {
-      console.log('AI classified as navigation + domain pattern = NAVIGATE');
-      return aiResult;
-    }
-    
-    // Check if navigation was close second choice
-    if (aiResult.confidence < 0.6) {
-      console.log('Low confidence + domain pattern = forcing NAVIGATE');
-      return {
-        intent: navigateIntent,
-        confidence: 0.8
-      };
-    }
-  }
+  console.log('Intent classification:', aiResult.intent, 'confidence:', aiResult.confidence);
   
   return aiResult;
 }
@@ -429,8 +280,8 @@ async function extractParameters(input, functionName) {
   
   // Command words to remove for cleaner parameter extraction
   const commandWords = [
-    'navigate', 'to', 'open', 'visit', 'go', 'show', 'load',
-    'search', 'for', 'find', 'google', 'lookup', 'tell', 'me', 'about',
+    'navigate', 'to', 'open', 'visit', 'go', 'goto', 'show', 'load',
+    'search', 'for', 'find', 'lookup', 'tell', 'me', 'about',
     'what', 'is', 'who', 'how', 'where', 'when',
     'get', 'extract', 'show', 'give', 'all',
     'scroll', 'the', 'page', 'content',
@@ -438,21 +289,19 @@ async function extractParameters(input, functionName) {
   ];
   
   // Remove command words and get the core parameter
-  let cleanedInput = input;
   const words = lowerInput.split(/\s+/);
-  let startIndex = 0;
+  const cleanedWords = [];
   
-  // Find where the actual parameter starts (after command words)
+  // Filter out command words
   for (let i = 0; i < words.length; i++) {
     if (!commandWords.includes(words[i])) {
-      startIndex = input.toLowerCase().indexOf(words[i]);
-      break;
+      // Get the actual word from original input to preserve case
+      const originalWords = input.split(/\s+/);
+      cleanedWords.push(originalWords[i]);
     }
   }
   
-  if (startIndex > 0) {
-    cleanedInput = input.substring(startIndex).trim();
-  }
+  const cleanedInput = cleanedWords.join(' ').trim();
   
   // Extract based on function type
   if (functionName === 'navigate') {
@@ -466,8 +315,6 @@ async function extractParameters(input, functionName) {
   } else if (functionName === 'search') {
     params.query = cleanedInput.replace(/[.,!?]+$/, '');
     console.log('NER extracted query:', params.query);
-  } else if (functionName === 'extractPageContent') {
-    params.format = 'text';
   } else if (functionName === 'scrollTo') {
     if (lowerInput.includes('top') || lowerInput.includes('up')) {
       params.position = 'top';
@@ -777,6 +624,89 @@ homeBtn.addEventListener('click', () => {
   showHomePage();
 });
 
+viewSourceBtn.addEventListener('click', async () => {
+  const activeTab = tabs.find(t => t.id === activeTabId);
+  if (!activeTab || !activeTab.webview) {
+    addAssistantMessage('Please open a webpage first.', 'error');
+    return;
+  }
+  
+  try {
+    // Get HTML source
+    const html = await activeTab.webview.executeJavaScript('document.documentElement.outerHTML');
+    
+    // Create a new window to show the source
+    const sourceWindow = window.open('', '_blank', 'width=800,height=600');
+    sourceWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Page Source: ${activeTab.title}</title>
+        <style>
+          body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            background: #1e1e1e;
+            color: #d4d4d4;
+          }
+          pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+          }
+          .header {
+            position: sticky;
+            top: 0;
+            background: #2d2d2d;
+            padding: 10px;
+            border-bottom: 2px solid #007acc;
+            margin: -20px -20px 20px -20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          .header h3 {
+            margin: 0;
+            color: #007acc;
+          }
+          .copy-btn {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: system-ui;
+          }
+          .copy-btn:hover {
+            background: #005a9e;
+          }
+          .line-numbers {
+            color: #858585;
+            user-select: none;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h3>Page Source</h3>
+          <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('source').textContent).then(() => alert('Copied to clipboard!'))">
+            Copy All
+          </button>
+        </div>
+        <pre id="source">${html.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+      </body>
+      </html>
+    `);
+    sourceWindow.document.close();
+    
+    addAssistantMessage('Page source opened in new window', 'success');
+  } catch (error) {
+    addAssistantMessage('Failed to get page source: ' + error.message, 'error');
+  }
+});
+
 urlInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') {
     loadPage();
@@ -868,19 +798,15 @@ async function processHomeInput(input) {
     
     if (aiIntent && aiIntent.confidence > 0.25) {
       const intentMap = {
-        'navigate to URL': 'navigate',
-        'search the web': 'search',
-        'extract page content': 'extractPageContent',
-        'get page information': 'getPageInfo',
-        'extract links': 'extractLinks',
-        'scroll page': 'scrollTo',
-        'go back': 'goBack',
-        'go forward': 'goForward',
-        'reload page': 'reload',
-        'open new tab': 'openTab',
-        'close tab': 'closeTab',
-        'find text in page': 'findInPage',
-        'go home': 'goHome'
+        'navigate': 'navigate',
+        'search': 'search',
+        'scroll': 'scrollTo',
+        'go_back': 'goBack',
+        'go_forward': 'goForward',
+        'reload': 'reload',
+        'click': 'click',
+        'type': 'type',
+        'close_tab': 'closeTab'
       };
       
       const functionName = intentMap[aiIntent.intent];
@@ -899,33 +825,6 @@ async function processHomeInput(input) {
         const params = await extractParameters(input, 'search');
         const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(params.query)}`;
         createTab(searchUrl);
-      } else {
-        // Data extraction commands - check if tab exists
-        const activeTab = tabs.find(t => t.id === activeTabId);
-        
-        if (!activeTab || !activeTab.webview || activeTab.url === 'about:blank' || !activeTab.url) {
-          createTab('about:blank');
-          setTimeout(() => {
-            addAssistantMessage('Please navigate to a webpage first, then use commands like "show me all links" or "read page" in the sidebar.', 'error');
-          }, 100);
-        } else {
-          // Execute data command
-          setTimeout(async () => {
-            const result = await processUserCommand(input);
-            if (result.type === 'error') {
-              addAssistantMessage(result.message, 'error');
-            } else if (result.type === 'data') {
-              addAssistantMessage(result.message, 'success');
-              if (result.data) {
-                addAssistantMessage(result.data, 'data');
-              }
-            } else if (result.type === 'info') {
-              addAssistantMessage(result.message, 'info');
-            } else {
-              addAssistantMessage(result.message, 'success');
-            }
-          }, 300);
-        }
       }
     } else {
       // Low confidence - default to search
@@ -952,6 +851,7 @@ sidebarCloseBtn.addEventListener('click', () => {
 
 chatSendBtn.addEventListener('click', async () => {
   const message = chatInput.value.trim();
+  console.log('Chat send clicked, message:', message);
   if (message) {
     // Add user message to chat
     const messageEl = document.createElement('div');
@@ -961,21 +861,28 @@ chatSendBtn.addEventListener('click', async () => {
     chatInput.value = '';
     chatMessages.scrollTop = chatMessages.scrollHeight;
     
-    // Process the command with function calling
-    const result = await processUserCommand(message);
-    
-    // Display result
-    if (result.type === 'error') {
-      addAssistantMessage(result.message, 'error');
-    } else if (result.type === 'data') {
-      addAssistantMessage(result.message, 'success');
-      if (result.data) {
-        addAssistantMessage(result.data, 'data');
+    try {
+      // Process the command with function calling
+      console.log('Calling processUserCommand...');
+      const result = await processUserCommand(message);
+      console.log('processUserCommand result:', result);
+      
+      // Display result
+      if (result.type === 'error') {
+        addAssistantMessage(result.message, 'error');
+      } else if (result.type === 'data') {
+        addAssistantMessage(result.message, 'success');
+        if (result.data) {
+          addAssistantMessage(result.data, 'data');
+        }
+      } else if (result.type === 'info') {
+        addAssistantMessage(result.message, 'info');
+      } else {
+        addAssistantMessage(result.message, 'success');
       }
-    } else if (result.type === 'info') {
-      addAssistantMessage(result.message, 'info');
-    } else {
-      addAssistantMessage(result.message, 'success');
+    } catch (error) {
+      console.error('Error processing command:', error);
+      addAssistantMessage('Error: ' + error.message, 'error');
     }
   }
 });
@@ -985,9 +892,6 @@ chatInput.addEventListener('keypress', (e) => {
     chatSendBtn.click();
   }
 });
-
-// Don't create initial tab - show home page instead
-// createTab();
 
 // ========== FUNCTION CALLING INTEGRATION ==========
 // Helper function to ensure webview is ready
@@ -1003,169 +907,8 @@ function waitForWebviewReady(webview) {
   });
 }
 
-// Load function orchestrator (inline for renderer process)
-const functionRegistry = {
-  navigate: {
-    handler: async (params, context) => {
-      const { createTab } = context;
-      if (!createTab) throw new Error("createTab function not available");
-      let url = params.url;
-      if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        url = 'https://' + url;
-      }
-      createTab(url);
-      return { success: true, url: url };
-    }
-  },
-  search: {
-    handler: async (params, context) => {
-      const { createTab } = context;
-      if (!createTab) throw new Error("createTab function not available");
-      const query = encodeURIComponent(params.query);
-      const engine = params.engine || "google";
-      const searchUrls = {
-        google: `https://www.google.com/search?q=${query}`,
-        bing: `https://www.bing.com/search?q=${query}`,
-        duckduckgo: `https://duckduckgo.com/?q=${query}`
-      };
-      createTab(searchUrls[engine]);
-      return { success: true, query: params.query, engine: engine };
-    }
-  },
-  extractPageContent: {
-    handler: async (params, context) => {
-      const { webview } = context;
-      if (!webview) throw new Error("No active tab");
-      await waitForWebviewReady(webview);
-      const result = await webview.executeJavaScript(`
-        (function() {
-          return document.body.innerText;
-        })()
-      `);
-      return { success: true, content: result };
-    }
-  },
-  extractLinks: {
-    handler: async (params, context) => {
-      const { webview } = context;
-      if (!webview) throw new Error("No active tab");
-      await waitForWebviewReady(webview);
-      const result = await webview.executeJavaScript(`
-        (function() {
-          const links = Array.from(document.querySelectorAll('a[href]'));
-          return links.map(a => ({
-            text: a.innerText.trim(),
-            href: a.href,
-            title: a.title
-          }));
-        })()
-      `);
-      return { success: true, links: result, count: result.length };
-    }
-  },
-  getPageInfo: {
-    handler: async (params, context) => {
-      const { webview } = context;
-      if (!webview) throw new Error("No active tab");
-      await waitForWebviewReady(webview);
-      const result = await webview.executeJavaScript(`
-        (function() {
-          const meta = document.querySelector('meta[name="description"]');
-          return {
-            title: document.title,
-            url: window.location.href,
-            description: meta ? meta.content : '',
-            domain: window.location.hostname
-          };
-        })()
-      `);
-      return { success: true, pageInfo: result };
-    }
-  },
-  scrollTo: {
-    handler: async (params, context) => {
-      const { webview } = context;
-      if (!webview) throw new Error("No active tab");
-      await waitForWebviewReady(webview);
-      await webview.executeJavaScript(`
-        (function() {
-          const position = '${params.position}';
-          if (position === 'top') {
-            window.scrollTo(0, 0);
-          } else if (position === 'bottom') {
-            window.scrollTo(0, document.body.scrollHeight);
-          } else if (position === 'middle') {
-            window.scrollTo(0, document.body.scrollHeight / 2);
-          }
-        })()
-      `);
-      return { success: true, position: params.position };
-    }
-  },
-  goBack: {
-    handler: async (params, context) => {
-      const { webview } = context;
-      if (!webview) throw new Error("No active tab");
-      if (webview.canGoBack()) {
-        webview.goBack();
-        return { success: true };
-      }
-      return { success: false, message: "Cannot go back" };
-    }
-  },
-  goForward: {
-    handler: async (params, context) => {
-      const { webview } = context;
-      if (!webview) throw new Error("No active tab");
-      if (webview.canGoForward()) {
-        webview.goForward();
-        return { success: true };
-      }
-      return { success: false, message: "Cannot go forward" };
-    }
-  },
-  reload: {
-    handler: async (params, context) => {
-      const { webview } = context;
-      if (!webview) throw new Error("No active tab");
-      webview.reload();
-      return { success: true };
-    }
-  },
-  openTab: {
-    handler: async (params, context) => {
-      const { createTab } = context;
-      if (!createTab) throw new Error("createTab function not available");
-      const url = params.url || 'about:blank';
-      createTab(url);
-      return { success: true, url: url };
-    }
-  },
-  closeTab: {
-    handler: async (params, context) => {
-      const { closeTab, activeTabId } = context;
-      if (!closeTab) throw new Error("closeTab function not available");
-      const tabId = params.tabId || activeTabId;
-      closeTab(tabId);
-      return { success: true, tabId: tabId };
-    }
-  },
-  findInPage: {
-    handler: async (params, context) => {
-      const { webview } = context;
-      if (!webview) throw new Error("No active tab");
-      webview.findInPage(params.text);
-      return { success: true, searchText: params.text };
-    }
-  },
-  goHome: {
-    handler: async (params, context) => {
-      // Close all tabs and show home page
-      showHomePage();
-      return { success: true };
-    }
-  }
-};
+// Get function registry from globally loaded module
+const functionRegistry = window.functionRegistryModule?.functionRegistry || {};
 
 // Simple intent detector and executor
 async function processUserCommand(userInput) {
@@ -1177,7 +920,9 @@ async function processUserCommand(userInput) {
     webview: activeTab ? activeTab.webview : null,
     createTab: createTab,
     closeTab: closeTab,
-    activeTabId: activeTabId
+    activeTabId: activeTabId,
+    showHomePage: showHomePage,
+    waitForWebviewReady: waitForWebviewReady
   };
   
   let functionName = null;
@@ -1195,29 +940,28 @@ async function processUserCommand(userInput) {
   try {
     const aiIntent = await classifyWithContext(input);
     
+    console.log('AI Intent result:', aiIntent);
+    
     if (aiIntent && aiIntent.confidence > 0.25) {
-      // Map AI intent to function
+      // Map AI intent to function (matches model output labels)
       const intentMap = {
-        'navigate to URL': 'navigate',
-        'search the web': 'search',
-        'extract page content': 'extractPageContent',
-        'get page information': 'getPageInfo',
-        'extract links': 'extractLinks',
-        'scroll page': 'scrollTo',
-        'go back': 'goBack',
-        'go forward': 'goForward',
-        'reload page': 'reload',
-        'open new tab': 'openTab',
-        'close tab': 'closeTab',
-        'find text in page': 'findInPage',
-        'go home': 'goHome'
+        'navigate': 'navigate',
+        'search': 'search',
+        'scroll': 'scrollTo',
+        'go_back': 'goBack',
+        'go_forward': 'goForward',
+        'reload': 'reload',
+        'click': 'click',
+        'type': 'type',
+        'close_tab': 'closeTab'
       };
       
       functionName = intentMap[aiIntent.intent];
+      console.log('Mapped to function:', functionName);
       
-      // Check if it's a data extraction command that requires an active tab
-      const dataExtractionCommands = ['extractPageContent', 'getPageInfo', 'extractLinks', 'scrollTo', 'findInPage'];
-      if (dataExtractionCommands.includes(functionName)) {
+      // Check if it's a command that requires an active tab
+      const pageCommands = ['scrollTo', 'findInPage'];
+      if (pageCommands.includes(functionName)) {
         if (!activeTab || !activeTab.webview) {
           return {
             type: 'error',
@@ -1228,42 +972,13 @@ async function processUserCommand(userInput) {
       
       // Extract parameters using NER-based intelligent extraction
       params = await extractParameters(userInput, functionName);
-      
-      console.log('AI detected function:', functionName, 'with confidence:', aiIntent.confidence, 'params:', params);
+      console.log('Extracted params:', params);
     } else {
-      // Low confidence - check if it looks like a data extraction command
-      const dataKeywords = ['links', 'page info', 'page content', 'read page', 'extract', 'show me', 'get'];
-      const looksLikeDataCommand = dataKeywords.some(keyword => input.includes(keyword));
-      
-      if (looksLikeDataCommand) {
-        console.log('AI confidence too low but looks like data extraction:', aiIntent?.confidence);
-        // Try to guess the function from keywords
-        if (input.includes('link') || input.includes('hyperlink') || input.includes('url') || input.includes('anchor')) {
-          functionName = 'extractLinks';
-          console.log('Keyword match: extractLinks');
-        } else if (input.includes('page info') || input.includes('metadata')) {
-          functionName = 'getPageInfo';
-        } else if (input.includes('page content') || input.includes('read page')) {
-          functionName = 'extractPageContent';
-        }
-        
-        // Check if tab exists
-        if (!activeTab || !activeTab.webview) {
-          return {
-            type: 'error',
-            message: 'Please open a webpage first before using this command.'
-          };
-        }
-        
-        // Extract parameters using NER
-        params = await extractParameters(userInput, functionName);
-      } else {
-        // Default to web search for general queries
-        console.log('AI confidence too low:', aiIntent?.confidence, '- defaulting to web search');
-        functionName = 'search';
-        // Extract search query using NER
-        params = await extractParameters(userInput, 'search');
-      }
+      // Low confidence - default to web search for general queries
+      console.log('AI confidence too low:', aiIntent?.confidence, '- defaulting to web search');
+      functionName = 'search';
+      // Extract search query using NER
+      params = await extractParameters(userInput, 'search');
     }
   } catch (error) {
     console.error('AI intent detection failed:', error);
@@ -1271,6 +986,10 @@ async function processUserCommand(userInput) {
     functionName = 'search';
     params.query = input;
   }
+  
+  console.log('Function to execute:', functionName);
+  console.log('Function exists in registry:', !!functionRegistry[functionName]);
+  console.log('Available functions:', Object.keys(functionRegistry));
   
   // Execute function
   if (functionName && functionRegistry[functionName]) {
@@ -1292,10 +1011,10 @@ async function processUserCommand(userInput) {
       <strong>Try commands like:</strong><br>
       ${icons.bullet}"open google.com" or "navigate to github.com"<br>
       ${icons.bullet}"search for AI news" or "find python tutorials"<br>
-      ${icons.bullet}"get page info" or "show me all links"<br>
       ${icons.bullet}"scroll to top" or "scroll to bottom"<br>
       ${icons.bullet}"go back" or "reload page"<br>
-      ${icons.bullet}"new tab" or "close tab"</div>`
+      ${icons.bullet}"new tab" or "close tab"<br>
+      ${icons.bullet}"find text on page"</div>`
   };
 }
 
@@ -1319,14 +1038,6 @@ function formatResult(functionName, result) {
     return { type: 'success', message: `Navigated to ${result.url}` };
   } else if (functionName === 'search') {
     return { type: 'success', message: `Searching for "${result.query}"` };
-  } else if (functionName === 'extractPageContent') {
-    return { type: 'data', message: 'Page content extracted', data: result.content.substring(0, 500) + '...' };
-  } else if (functionName === 'extractLinks') {
-    const linkList = result.links.slice(0, 10).map(l => `<div style="margin: 4px 0;">${icons.bullet}${l.text || l.href}</div>`).join('');
-    return { type: 'data', message: `Found ${result.count} links`, data: linkList };
-  } else if (functionName === 'getPageInfo') {
-    const info = result.pageInfo;
-    return { type: 'data', message: 'Page information', data: `<div style="line-height: 1.6;"><strong>Title:</strong> ${info.title}<br><strong>URL:</strong> ${info.url}<br><strong>Domain:</strong> ${info.domain}</div>` };
   } else if (functionName === 'scrollTo') {
     return { type: 'success', message: `Scrolled to ${result.position}` };
   } else if (functionName === 'goBack' || functionName === 'goForward' || functionName === 'reload') {
@@ -1366,10 +1077,43 @@ function addAssistantMessage(content, type = 'info') {
 
 } // End of initializeApp
 
-// Initialize the app when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeApp);
-} else {
-  // DOM already loaded
-  initializeApp();
+// Initialize the app when DOM is ready AND modules are loaded
+function startApp() {
+  console.log('=== startApp called ===');
+  console.log('document.readyState:', document.readyState);
+  console.log('window.modulesReady:', window.modulesReady);
+  
+  if (document.readyState === 'loading') {
+    console.log('Waiting for DOMContentLoaded...');
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('DOMContentLoaded fired');
+      // Wait for modules if they're not ready yet
+      if (window.modulesReady) {
+        console.log('Modules already ready, initializing...');
+        initializeApp();
+      } else {
+        console.log('Waiting for modulesReady event...');
+        window.addEventListener('modulesReady', () => {
+          console.log('modulesReady event fired, initializing...');
+          initializeApp();
+        }, { once: true });
+      }
+    });
+  } else {
+    // DOM already loaded
+    console.log('DOM already loaded');
+    if (window.modulesReady) {
+      console.log('Modules already ready, initializing immediately...');
+      initializeApp();
+    } else {
+      console.log('Waiting for modulesReady event...');
+      window.addEventListener('modulesReady', () => {
+        console.log('modulesReady event fired, initializing...');
+        initializeApp();
+      }, { once: true });
+    }
+  }
 }
+
+console.log('=== App.js loaded ===');
+startApp();

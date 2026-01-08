@@ -226,7 +226,7 @@ AI detected function: navigate with params: {url: "github.com"}
 2. Multi-turn dialogue support
 3. Context retention across messages
 4. Response streaming
-
+   
 ## Resources
 
 - **Transformers.js Docs**: https://huggingface.co/docs/transformers.js

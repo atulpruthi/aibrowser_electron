@@ -18,8 +18,8 @@ const functionRegistry = {
     permission: "auto",
     offline: true,
     handler: async (params, context) => {
-      const { webview } = context;
-      if (!webview) throw new Error("No active tab");
+      const { createTab } = context;
+      if (!createTab) throw new Error("createTab function not available");
       
       let url = params.url;
       // Add protocol if missing
@@ -27,7 +27,7 @@ const functionRegistry = {
         url = 'https://' + url;
       }
       
-      webview.src = url;
+      createTab(url);
       return { success: true, url: url };
     }
   },
@@ -52,8 +52,8 @@ const functionRegistry = {
     permission: "auto",
     offline: false,
     handler: async (params, context) => {
-      const { webview } = context;
-      if (!webview) throw new Error("No active tab");
+      const { createTab } = context;
+      if (!createTab) throw new Error("createTab function not available");
       
       const engine = params.engine || "google";
       const query = encodeURIComponent(params.query);
@@ -64,7 +64,7 @@ const functionRegistry = {
         duckduckgo: `https://duckduckgo.com/?q=${query}`
       };
       
-      webview.src = searchUrls[engine];
+      createTab(searchUrls[engine]);
       return { success: true, query: params.query, engine: engine };
     }
   },
@@ -169,114 +169,6 @@ const functionRegistry = {
       
       webview.reload();
       return { success: true };
-    }
-  },
-
-  // ========== CONTENT EXTRACTION FUNCTIONS ==========
-  extractPageContent: {
-    description: "Extract all text content from the current page",
-    parameters: {
-      type: "object",
-      properties: {
-        format: {
-          type: "string",
-          enum: ["text", "html", "markdown"],
-          description: "Output format (default: text)"
-        }
-      }
-    },
-    permission: "auto",
-    offline: true,
-    handler: async (params, context) => {
-      const { webview } = context;
-      if (!webview) throw new Error("No active tab");
-      
-      try {
-        const result = await webview.executeJavaScript(`
-          (function() {
-            const format = '${params.format || 'text'}';
-            if (format === 'html') {
-              return document.body.innerHTML;
-            } else if (format === 'text') {
-              return document.body.innerText;
-            } else {
-              return document.body.innerText; // Simplified for now
-            }
-          })()
-        `);
-        
-        return { success: true, content: result };
-      } catch (error) {
-        throw new Error("Failed to extract content: " + error.message);
-      }
-    }
-  },
-
-  extractLinks: {
-    description: "Extract all links from the current page",
-    parameters: {
-      type: "object",
-      properties: {
-        filter: {
-          type: "string",
-          description: "Filter links by domain or pattern"
-        }
-      }
-    },
-    permission: "auto",
-    offline: true,
-    handler: async (params, context) => {
-      const { webview } = context;
-      if (!webview) throw new Error("No active tab");
-      
-      try {
-        const result = await webview.executeJavaScript(`
-          (function() {
-            const links = Array.from(document.querySelectorAll('a[href]'));
-            return links.map(a => ({
-              text: a.innerText.trim(),
-              href: a.href,
-              title: a.title
-            }));
-          })()
-        `);
-        
-        return { success: true, links: result, count: result.length };
-      } catch (error) {
-        throw new Error("Failed to extract links: " + error.message);
-      }
-    }
-  },
-
-  getPageInfo: {
-    description: "Get current page metadata (title, URL, description)",
-    parameters: {
-      type: "object",
-      properties: {}
-    },
-    permission: "auto",
-    offline: true,
-    handler: async (params, context) => {
-      const { webview } = context;
-      if (!webview) throw new Error("No active tab");
-      
-      try {
-        const result = await webview.executeJavaScript(`
-          (function() {
-            const meta = document.querySelector('meta[name="description"]');
-            return {
-              title: document.title,
-              url: window.location.href,
-              description: meta ? meta.content : '',
-              domain: window.location.hostname
-            };
-          })()
-        `);
-        
-        return { success: true, pageInfo: result };
-      } catch (error) {
-        throw new Error("Failed to get page info: " + error.message);
-      }
     }
   },
 
@@ -390,4 +282,9 @@ function listFunctions() {
 // Export for use in both main and renderer processes
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { functionRegistry, getFunction, listFunctions };
+}
+
+// Also expose to window for browser context
+if (typeof window !== 'undefined') {
+  window.functionRegistryModule = { functionRegistry, getFunction, listFunctions };
 }

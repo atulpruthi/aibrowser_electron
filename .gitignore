@@ -8,3 +8,10 @@ yarn-error.log*
 .env.local
 dist/
 build/
+
+# Large model files (download separately or train using model-training scripts)
+models/distilbert-navigation-quantized/model.safetensors
+models/distilbert-navigation-quantized/quantized_model.pt
+models/**/model.safetensors
+models/**/quantized_model.pt
+models/**/pytorch_model.bin
