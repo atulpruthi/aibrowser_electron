@@ -285,7 +285,9 @@ async function extractParameters(input, functionName) {
     'what', 'is', 'who', 'how', 'where', 'when',
     'get', 'extract', 'show', 'give', 'all',
     'scroll', 'the', 'page', 'content',
-    'find', 'in', 'on'
+    'find', 'in', 'on', 'move', 'take', 'bring', 'head', 'pull',
+    'access', 'browse', 'display', 'launch',
+    'click', 'type', 'enter', 'input', 'press', 'button'
   ];
   
   // Remove command words and get the core parameter
@@ -324,6 +326,12 @@ async function extractParameters(input, functionName) {
       params.position = 'top';
     }
     console.log('NER extracted scroll position:', params.position);
+  } else if (functionName === 'click') {
+    params.text = cleanedInput.replace(/[.,!?]+$/, '');
+    console.log('NER extracted click text:', params.text);
+  } else if (functionName === 'type') {
+    params.text = cleanedInput.replace(/[.,!?]+$/, '');
+    console.log('NER extracted type text:', params.text);
   } else if (functionName === 'findInPage') {
     params.text = cleanedInput.replace(/[.,!?]+$/, '');
     console.log('NER extracted search text:', params.text);
@@ -349,14 +357,9 @@ function showHomePage() {
   tabBar.style.display = 'none';
   navBar.style.display = 'none';
   document.getElementById('main-content').style.display = 'none';
-  // Close all tabs
-  tabs.forEach(tab => {
-    if (tab.webview && tab.webview.parentNode) {
-      browserContainer.removeChild(tab.webview);
-    }
-  });
-  tabs = [];
-  activeTabId = null;
+  
+  // Keep tabs alive but hidden - don't remove them
+  // They will reappear when user navigates from homepage
 }
 
 function createTab(url = 'about:blank') {
@@ -512,15 +515,16 @@ function closeTab(tabId) {
   // Remove from array
   tabs.splice(tabIndex, 1);
   
-  // If closing active tab, switch to another
+  // If closing active tab, switch to another or show homepage
   if (tabId === activeTabId) {
     if (tabs.length > 0) {
       // Switch to previous tab or first tab
       const newActiveTab = tabs[Math.max(0, tabIndex - 1)];
       switchTab(newActiveTab.id);
     } else {
-      // No tabs left, create a new one
-      createTab();
+      // No tabs left, show homepage instead of creating new tab
+      activeTabId = null;
+      showHomePage();
     }
   }
 }
@@ -750,9 +754,13 @@ document.addEventListener('keydown', (e) => {
 
 // Home page event listeners
 homeSendBtn.addEventListener('click', async () => {
+  console.log('Home send button clicked!');
   const input = homeInput.value.trim();
+  console.log('Input value:', input);
   if (input) {
     await processHomeInput(input);
+  } else {
+    console.log('No input provided');
   }
 });
 
@@ -767,10 +775,13 @@ homeInput.addEventListener('keypress', async (e) => {
 
 // Process home page input with smart AI-powered intent detection
 async function processHomeInput(input) {
+  console.log('processHomeInput called with:', input);
   const lowerInput = input.toLowerCase();
   
   // Check if it's a direct URL (contains domain extension or starts with protocol)
   const isUrl = /^(https?:\/\/|www\.|[a-zA-Z0-9-]+\.(com|org|net|edu|gov|io|co|dev|app|ai|tech))/i.test(input);
+  
+  console.log('Is URL?', isUrl);
   
   if (isUrl) {
     // It's a URL - navigate directly
@@ -778,14 +789,17 @@ async function processHomeInput(input) {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = 'https://' + url;
     }
+    console.log('Creating tab with URL:', url);
     createTab(url);
     homeInput.value = '';
     return;
   }
   
   // Use AI-powered smart intent detection for everything else
+  console.log('AI Model Ready:', aiModelReady);
   if (!aiModelReady) {
     // Fallback: treat as search if AI not ready
+    console.log('AI not ready, falling back to search');
     const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(input)}`;
     createTab(searchUrl);
     homeInput.value = '';
@@ -995,11 +1009,13 @@ async function processUserCommand(userInput) {
   if (functionName && functionRegistry[functionName]) {
     try {
       const result = await functionRegistry[functionName].handler(params, context);
+      console.log('Function execution result:', result);
       return formatResult(functionName, result);
     } catch (error) {
+      console.error('Function execution error:', error);
       return {
         type: 'error',
-        message: error.message
+        message: `Action failed: ${error.message}`
       };
     }
   }

@@ -1,0 +1,618 @@
+[
+  {
+    "text": "go to google",
+    "intent": "navigate"
+  },
+  {
+    "text": "open youtube",
+    "intent": "navigate"
+  },
+  {
+    "text": "navigate to github",
+    "intent": "navigate"
+  },
+  {
+    "text": "visit amazon",
+    "intent": "navigate"
+  },
+  {
+    "text": "load twitter",
+    "intent": "navigate"
+  },
+  {
+    "text": "search for python tutorials",
+    "intent": "search"
+  },
+  {
+    "text": "find AI news",
+    "intent": "search"
+  },
+  {
+    "text": "look up weather",
+    "intent": "search"
+  },
+  {
+    "text": "what is machine learning",
+    "intent": "search"
+  },
+  {
+    "text": "scroll down",
+    "intent": "scroll"
+  },
+  {
+    "text": "scroll to top",
+    "intent": "scroll"
+  },
+  {
+    "text": "scroll up",
+    "intent": "scroll"
+  },
+  {
+    "text": "go back",
+    "intent": "go_back"
+  },
+  {
+    "text": "previous page",
+    "intent": "go_back"
+  },
+  {
+    "text": "go forward",
+    "intent": "go_forward"
+  },
+  {
+    "text": "next page",
+    "intent": "go_forward"
+  },
+  {
+    "text": "reload",
+    "intent": "reload"
+  },
+  {
+    "text": "refresh page",
+    "intent": "reload"
+  },
+  {
+    "text": "click the button",
+    "intent": "click"
+  },
+  {
+    "text": "click on login",
+    "intent": "click"
+  },
+  {
+    "text": "type hello world",
+    "intent": "type"
+  },
+  {
+    "text": "enter my email",
+    "intent": "type"
+  },
+  {
+    "text": "close this tab",
+    "intent": "close_tab"
+  },
+  {
+    "text": "close the tab",
+    "intent": "close_tab"
+  },
+  {
+    "text": "close tab",
+    "intent": "close_tab"
+  },
+  {
+    "text": "close current tab",
+    "intent": "close_tab"
+  },
+  {
+    "text": "shut this tab",
+    "intent": "close_tab"
+  },
+  {
+    "text": "exit tab",
+    "intent": "close_tab"
+  },
+  {
+    "text": "kill this tab",
+    "intent": "close_tab"
+  },
+  {
+    "text": "remove tab",
+    "intent": "close_tab"
+  },
+  {
+    "text": "get rid of this tab",
+    "intent": "close_tab"
+  },
+  {
+    "text": "close it",
+    "intent": "close_tab"
+  },
+  {
+    "text": "shut it",
+    "intent": "close_tab"
+  },
+  {
+    "text": "close page",
+    "intent": "close_tab"
+  },
+  {
+    "text": "navigate to yahoo",
+    "intent": "navigate"
+  },
+  {
+    "text": "go to yahoo",
+    "intent": "navigate"
+  },
+  {
+    "text": "open yahoo",
+    "intent": "navigate"
+  },
+  {
+    "text": "visit yahoo",
+    "intent": "navigate"
+  },
+  {
+    "text": "take me to facebook",
+    "intent": "navigate"
+  },
+  {
+    "text": "open facebook.com",
+    "intent": "navigate"
+  },
+  {
+    "text": "go to twitter.com",
+    "intent": "navigate"
+  },
+  {
+    "text": "visit reddit",
+    "intent": "navigate"
+  },
+  {
+    "text": "open instagram",
+    "intent": "navigate"
+  },
+  {
+    "text": "navigate to linkedin",
+    "intent": "navigate"
+  },
+  {
+    "text": "load netflix",
+    "intent": "navigate"
+  },
+  {
+    "text": "open wikipedia",
+    "intent": "navigate"
+  },
+  {
+    "text": "go to stackoverflow",
+    "intent": "navigate"
+  },
+  {
+    "text": "visit medium.com",
+    "intent": "navigate"
+  },
+  {
+    "text": "open gmail",
+    "intent": "navigate"
+  },
+  {
+    "text": "scroll to bottom",
+    "intent": "scroll"
+  },
+  {
+    "text": "page down",
+    "intent": "scroll"
+  },
+  {
+    "text": "page up",
+    "intent": "scroll"
+  },
+  {
+    "text": "scroll down a bit",
+    "intent": "scroll"
+  },
+  {
+    "text": "scroll up please",
+    "intent": "scroll"
+  },
+  {
+    "text": "go to top",
+    "intent": "scroll"
+  },
+  {
+    "text": "go to bottom",
+    "intent": "scroll"
+  },
+  {
+    "text": "reload page",
+    "intent": "reload"
+  },
+  {
+    "text": "refresh",
+    "intent": "reload"
+  },
+  {
+    "text": "reload this page",
+    "intent": "reload"
+  },
+  {
+    "text": "refresh the page",
+    "intent": "reload"
+  },
+  {
+    "text": "update page",
+    "intent": "reload"
+  },
+  {
+    "text": "back",
+    "intent": "go_back"
+  },
+  {
+    "text": "go to previous page",
+    "intent": "go_back"
+  },
+  {
+    "text": "navigate back",
+    "intent": "go_back"
+  },
+  {
+    "text": "back button",
+    "intent": "go_back"
+  },
+  {
+    "text": "return to previous",
+    "intent": "go_back"
+  },
+  {
+    "text": "forward",
+    "intent": "go_forward"
+  },
+  {
+    "text": "go to next page",
+    "intent": "go_forward"
+  },
+  {
+    "text": "navigate forward",
+    "intent": "go_forward"
+  },
+  {
+    "text": "forward button",
+    "intent": "go_forward"
+  },
+  {
+    "text": "search for latest news",
+    "intent": "search"
+  },
+  {
+    "text": "find information about AI",
+    "intent": "search"
+  },
+  {
+    "text": "look up machine learning",
+    "intent": "search"
+  },
+  {
+    "text": "what is deep learning",
+    "intent": "search"
+  },
+  {
+    "text": "how to code in javascript",
+    "intent": "search"
+  },
+  {
+    "text": "search python documentation",
+    "intent": "search"
+  },
+  {
+    "text": "find react tutorials",
+    "intent": "search"
+  },
+  {
+    "text": "look for nodejs guides",
+    "intent": "search"
+  },
+  {
+    "text": "what is kubernetes",
+    "intent": "search"
+  },
+  {
+    "text": "how does docker work",
+    "intent": "search"
+  },
+  {
+    "text": "click the link",
+    "intent": "click"
+  },
+  {
+    "text": "click submit",
+    "intent": "click"
+  },
+  {
+    "text": "press the button",
+    "intent": "click"
+  },
+  {
+    "text": "click here",
+    "intent": "click"
+  },
+  {
+    "text": "click login button",
+    "intent": "click"
+  },
+  {
+    "text": "type in the box",
+    "intent": "type"
+  },
+  {
+    "text": "enter text",
+    "intent": "type"
+  },
+  {
+    "text": "fill in the form",
+    "intent": "type"
+  },
+  {
+    "text": "write something",
+    "intent": "type"
+  },
+  {
+    "text": "input my name",
+    "intent": "type"
+  },
+  {
+    "text": "take me to amazon",
+    "intent": "navigate"
+  },
+  {
+    "text": "browse to stackoverflow",
+    "intent": "navigate"
+  },
+  {
+    "text": "go to wikipedia",
+    "intent": "navigate"
+  },
+  {
+    "text": "pull up reddit",
+    "intent": "navigate"
+  },
+  {
+    "text": "head to twitter",
+    "intent": "navigate"
+  },
+  {
+    "text": "show me linkedin",
+    "intent": "navigate"
+  },
+  {
+    "text": "access youtube",
+    "intent": "navigate"
+  },
+  {
+    "text": "visit instagram",
+    "intent": "navigate"
+  },
+  {
+    "text": "navigate facebook",
+    "intent": "navigate"
+  },
+  {
+    "text": "open up microsoft.com",
+    "intent": "navigate"
+  },
+  {
+    "text": "bring up apple.com",
+    "intent": "navigate"
+  },
+  {
+    "text": "display github",
+    "intent": "navigate"
+  },
+  {
+    "text": "load up ebay",
+    "intent": "navigate"
+  },
+  {
+    "text": "go to the bbc website",
+    "intent": "navigate"
+  },
+  {
+    "text": "look up weather forecast",
+    "intent": "search"
+  },
+  {
+    "text": "find information about python",
+    "intent": "search"
+  },
+  {
+    "text": "google machine learning",
+    "intent": "search"
+  },
+  {
+    "text": "search the web for recipes",
+    "intent": "search"
+  },
+  {
+    "text": "look for hotels nearby",
+    "intent": "search"
+  },
+  {
+    "text": "find restaurants near me",
+    "intent": "search"
+  },
+  {
+    "text": "search best laptops 2026",
+    "intent": "search"
+  },
+  {
+    "text": "look up movie reviews",
+    "intent": "search"
+  },
+  {
+    "text": "find news about technology",
+    "intent": "search"
+  },
+  {
+    "text": "search for travel deals",
+    "intent": "search"
+  },
+  {
+    "text": "look up javascript tutorials",
+    "intent": "search"
+  },
+  {
+    "text": "scroll down please",
+    "intent": "scroll"
+  },
+  {
+    "text": "go to the bottom",
+    "intent": "scroll"
+  },
+  {
+    "text": "scroll up a bit",
+    "intent": "scroll"
+  },
+  {
+    "text": "move to the top",
+    "intent": "scroll"
+  },
+  {
+    "text": "scroll to the end",
+    "intent": "scroll"
+  },
+  {
+    "text": "go up",
+    "intent": "scroll"
+  },
+  {
+    "text": "scroll down the page",
+    "intent": "scroll"
+  },
+  {
+    "text": "exit this tab",
+    "intent": "close_tab"
+  },
+  {
+    "text": "remove this tab",
+    "intent": "close_tab"
+  },
+  {
+    "text": "dismiss tab",
+    "intent": "close_tab"
+  },
+  {
+    "text": "close the current tab",
+    "intent": "close_tab"
+  },
+  {
+    "text": "back please",
+    "intent": "go_back"
+  },
+  {
+    "text": "take me back",
+    "intent": "go_back"
+  },
+  {
+    "text": "go backwards",
+    "intent": "go_back"
+  },
+  {
+    "text": "forward please",
+    "intent": "go_forward"
+  },
+  {
+    "text": "move forward",
+    "intent": "go_forward"
+  },
+  {
+    "text": "advance",
+    "intent": "go_forward"
+  },
+  {
+    "text": "go forwards",
+    "intent": "go_forward"
+  },
+  {
+    "text": "continue forward",
+    "intent": "go_forward"
+  },
+  {
+    "text": "reload this",
+    "intent": "reload"
+  },
+  {
+    "text": "reload current page",
+    "intent": "reload"
+  },
+  {
+    "text": "refresh this page",
+    "intent": "reload"
+  },
+  {
+    "text": "reload the website",
+    "intent": "reload"
+  },
+  {
+    "text": "hit refresh",
+    "intent": "reload"
+  },
+  {
+    "text": "refresh browser",
+    "intent": "reload"
+  },
+  {
+    "text": "click that button",
+    "intent": "click"
+  },
+  {
+    "text": "press the link",
+    "intent": "click"
+  },
+  {
+    "text": "tap on that",
+    "intent": "click"
+  },
+  {
+    "text": "select the button",
+    "intent": "click"
+  },
+  {
+    "text": "click on the menu",
+    "intent": "click"
+  },
+  {
+    "text": "press that option",
+    "intent": "click"
+  },
+  {
+    "text": "hit the submit button",
+    "intent": "click"
+  },
+  {
+    "text": "click the download link",
+    "intent": "click"
+  },
+  {
+    "text": "type in the search box",
+    "intent": "type"
+  },
+  {
+    "text": "input my password",
+    "intent": "type"
+  },
+  {
+    "text": "write something in the field",
+    "intent": "type"
+  },
+  {
+    "text": "type my username",
+    "intent": "type"
+  },
+  {
+    "text": "enter text here",
+    "intent": "type"
+  },
+  {
+    "text": "input data into field",
+    "intent": "type"
+  }
+]
