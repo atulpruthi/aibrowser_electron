@@ -20,22 +20,34 @@ from datasets import Dataset
 from sklearn.model_selection import train_test_split
 import numpy as np
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+import json
+import os
 
-# Define intent labels
-INTENTS = {
-    'navigate': 0,
-    'search': 1,
-    'scroll': 2,
-    'go_back': 3,
-    'go_forward': 4,
-    'reload': 5,
-    'new_tab': 6,
-    'close_tab': 7,
-    'find_in_page': 8
-}
+# Check if expanded data exists
+expanded_data_path = './training_data_expanded.json'
+if os.path.exists(expanded_data_path):
+    print(f"Loading expanded training data from {expanded_data_path}...")
+    with open(expanded_data_path, 'r') as f:
+        data_loaded = json.load(f)
+        training_data = [(item['text'], item['intent']) for item in data_loaded]
+    print(f"Loaded {len(training_data)} examples from expanded dataset")
+else:
+    print("Using original training data...")
+    # Define intent labels
+    INTENTS = {
+        'navigate': 0,
+        'search': 1,
+        'scroll': 2,
+        'go_back': 3,
+        'go_forward': 4,
+        'reload': 5,
+        'new_tab': 6,
+        'close_tab': 7,
+        'find_in_page': 8
+    }
 
-# Training data - expand this with more examples
-training_data = [
+    # Training data - expand this with more examples
+    training_data = [
     # Navigation examples
     ("navigate to google", "navigate"),
     ("open github.com", "navigate"),
@@ -118,7 +130,15 @@ training_data = [
     ("search in page", "find_in_page"),
     ("find on page", "find_in_page"),
     ("search for text on page", "find_in_page"),
-]
+    ]
+
+# Build INTENTS dict from training data
+INTENTS = {}
+for text, intent in training_data:
+    if intent not in INTENTS:
+        INTENTS[intent] = len(INTENTS)
+
+print(f"Detected {len(INTENTS)} intents: {list(INTENTS.keys())}")
 
 def prepare_dataset(data, tokenizer, test_size=0.2):
     """Prepare training and validation datasets"""
@@ -172,9 +192,15 @@ def main():
     # Load tokenizer and model
     model_name = "distilbert-base-uncased"
     tokenizer = DistilBertTokenizer.from_pretrained(model_name)
+    # Create label mappings
+    id2label = {v: k for k, v in INTENTS.items()}
+    label2id = INTENTS
+    
     model = DistilBertForSequenceClassification.from_pretrained(
         model_name,
-        num_labels=len(INTENTS)
+        num_labels=len(INTENTS),
+        id2label=id2label,
+        label2id=label2id
     )
     
     print(f"Loaded {model_name}")

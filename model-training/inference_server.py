@@ -17,10 +17,11 @@ try:
     model = AutoModelForSequenceClassification.from_pretrained(model_path)
     model.eval()
     
-    # Intent labels
-    intents = ['navigate', 'search', 'scroll', 'go_back', 'go_forward', 'reload', 'click', 'type', 'close_tab']
+    # Get intent labels from model config
+    id2label = model.config.id2label
+    intents = [id2label[i] for i in range(len(id2label))]
     
-    print(json.dumps({"status": "ready", "message": "Model loaded successfully"}), flush=True)
+    print(json.dumps({"status": "ready", "message": "Model loaded successfully", "intents": intents}), flush=True)
     
     # Process requests from stdin
     for line in sys.stdin:

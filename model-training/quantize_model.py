@@ -75,6 +75,11 @@ def quantize_model(model_path, output_path):
     # Also save the original model in half precision (fp16) which is simpler and well-supported
     print("\nCreating FP16 (half precision) version...")
     model_fp16 = model.half()
+    
+    # Ensure config preserves the label mappings
+    model_fp16.config.id2label = model.config.id2label
+    model_fp16.config.label2id = model.config.label2id
+    
     model_fp16.save_pretrained(output_path)
     
     # Save tokenizer
